@@ -1,0 +1,6 @@
+
+spring:
+  application:
+    name: usuario-servicio
+  config:
+    import: optional:configserver:http://microservicio-config:8888

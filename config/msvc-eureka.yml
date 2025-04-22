@@ -1,0 +1,26 @@
+server:
+  port: 8761
+
+spring:
+  application:
+    name: msvc-eureka
+
+eureka:
+  instance:
+    hostname: microservicio-eureka 
+    prefer-ip-address: false 
+  client:
+    register-with-eureka: false  
+    fetch-registry: false       
+    service-url:
+      defaultZone: http://microservicio-eureka:8761/eureka  
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "*"
+  metrics:
+    export:
+      prometheus:
+        enabled: true

@@ -1,0 +1,33 @@
+global:
+  scrape_interval: 10s
+
+scrape_configs:
+  - job_name: 'asignaturas'
+    metrics_path: '/actuator/prometheus'
+    static_configs:
+      - targets: ['microservicio-asignaturas:9090']
+
+  - job_name: 'estudiantes'
+    metrics_path: '/actuator/prometheus'
+    static_configs:
+      - targets: ['microservicio-estudiantes:8090']
+
+  - job_name: 'usuarios'
+    metrics_path: '/actuator/prometheus'
+    static_configs:
+      - targets: ['usuario-servicio:8081']
+
+  - job_name: 'config'
+    metrics_path: '/actuator/prometheus'
+    static_configs:
+      - targets: ['microservicio-config:8888']
+
+  - job_name: 'eureka'
+    metrics_path: '/actuator/prometheus'
+    static_configs:
+      - targets: ['microservicio-eureka:8761']
+
+  - job_name: 'gateway'
+    metrics_path: '/actuator/prometheus'
+    static_configs:
+      - targets: ['microservicio-gateway:8080']

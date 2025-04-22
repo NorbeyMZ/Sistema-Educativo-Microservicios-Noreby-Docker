@@ -1,0 +1,36 @@
+server:
+  port: 8090
+
+spring:
+  application:
+    name: msvc-estudiantes
+
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://mysql-db-estudiantes:3306/estudiantesDB
+    username: root
+    password: root
+
+  jpa:
+    hibernate:
+      ddl-auto: create
+    database-platform: org.hibernate.dialect.MySQL8Dialect
+
+eureka:
+  client:
+    register-with-eureka: true  # ← Debe ser TRUE
+    fetch-registry: true
+    service-url:
+      defaultZone: http://microservicio-eureka:8761/eureka
+      enabled: true
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "*"
+  metrics:
+    export:
+      prometheus:
+        enabled: true
+

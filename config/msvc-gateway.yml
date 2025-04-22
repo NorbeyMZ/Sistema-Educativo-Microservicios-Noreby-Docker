@@ -1,0 +1,48 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: msvc-gateway
+
+  cloud:
+    gateway:
+      discovery:
+        locator:
+          enabled: true
+          lower-case-service-id: true
+      routes:
+        - id: estudiantes
+          uri: lb://msvc-estudiantes
+          predicates:
+            - Path=/api/estudiantes/**
+        - id: asignaturas
+          uri: lb://msvc-asignaturas
+          predicates:
+            - Path=/api/asignaturas/**
+        - id: usuario-servicio
+          uri: lb://usuario-servicio
+          predicates:
+            - Path=/usuarios/**, /auth/**
+          filters:
+            - RewritePath=/auth/(?<segment>.*), /auth/${segment}
+
+eureka:
+  client:
+    register-with-eureka: true
+    fetch-registry: true
+    service-url:
+      defaultZone: http://microservicio-eureka:8761/eureka
+    healthcheck:
+      enabled: true
+
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "*"
+  metrics:
+    export:
+      prometheus:
+        enabled: true

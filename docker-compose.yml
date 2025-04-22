@@ -1,0 +1,228 @@
+version: "3.8"
+
+services:
+  # 1. Bases de Datos (Primer Nivel)
+  postgres-db:
+    image: postgres:15
+    container_name: postgres-db
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: root
+      POSTGRES_DB: asignaturasDB
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - backend
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+
+  mysql-db-estudiantes:
+    image: mysql:8
+    container_name: mysql-db-estudiantes
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: estudiantesDB
+    ports:
+      - "3307:3306"
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -uroot -proot --silent"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - backend
+    volumes:
+      - mysql-data-estudiantes:/var/lib/mysql
+
+  mysql-db-usuarios:
+    image: mysql:8
+    container_name: mysql-db-usuarios
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: usuariosdb
+    ports:
+      - "3308:3306"
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -uroot -proot --silent"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - backend
+    volumes:
+      - mysql-data-usuarios:/var/lib/mysql
+
+  # 2. Config Server (Segundo Nivel)
+  microservicio-config:
+    build:
+      context: ./microservicio-config
+    container_name: microservicio-config
+    ports:
+      - "8888:8888"
+    environment:
+      SPRING_PROFILES_ACTIVE: native
+    volumes:
+      - ./config:/config
+    depends_on:
+      postgres-db:
+        condition: service_healthy
+      mysql-db-estudiantes:
+        condition: service_healthy
+      mysql-db-usuarios:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8888/actuator/health"]
+      interval: 10s
+      timeout: 30s
+      retries: 5
+      start_period: 30s
+    networks:
+      - backend
+
+  # 3. Eureka Server (Tercer Nivel)
+  microservicio-eureka:
+    build:
+      context: ./microservicio-eureka
+    container_name: microservicio-eureka
+    ports:
+      - "8761:8761"
+    environment:
+      EUREKA_CLIENT_REGISTER_WITH_EUREKA: false
+      EUREKA_CLIENT_FETCH_REGISTRY: false
+      SPRING_CONFIG_IMPORT: "optional:configserver:http://microservicio-config:8888"
+    depends_on:
+      microservicio-config:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8761/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - backend
+
+  # 4. Gateway (Cuarto Nivel)
+  microservicio-gateway:
+    build:
+      context: ./microservicio-gateway
+    container_name: microservicio-gateway
+    ports:
+      - "8080:8080"
+    environment:
+      SPRING_CONFIG_IMPORT: "optional:configserver:http://microservicio-config:8888"
+    depends_on:
+      microservicio-eureka:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - backend
+
+  # 5. Microservicios (Quinto Nivel)
+  microservicio-asignaturas:
+    build:
+      context: ./microservicio-asignaturas
+    container_name: microservicio-asignaturas
+    ports:
+      - "9090:9090"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres-db:5432/asignaturasDB
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: root
+      SPRING_CONFIG_IMPORT: "optional:configserver:http://microservicio-config:8888"
+    depends_on:
+      microservicio-eureka:
+        condition: service_healthy
+      postgres-db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9090/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - backend
+
+  microservicio-estudiantes:
+    build:
+      context: ./microservicio-estudiantes
+    container_name: microservicio-estudiantes
+    ports:
+      - "8090:8090"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql-db-estudiantes:3306/estudiantesDB
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: root
+      SPRING_CONFIG_IMPORT: "optional:configserver:http://microservicio-config:8888"
+    depends_on:
+      microservicio-eureka:
+        condition: service_healthy
+      mysql-db-estudiantes:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8090/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - backend
+
+  usuario-servicio:
+    build:
+      context: ./usuario-servicio
+    container_name: usuario-servicio
+    ports:
+      - "8081:8081"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql-db-usuarios:3306/usuariosdb
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: root
+      SPRING_CONFIG_IMPORT: "optional:configserver:http://microservicio-config:8888"
+    depends_on:
+      microservicio-eureka:
+        condition: service_healthy
+      mysql-db-usuarios:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8081/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - backend
+
+  # 6. Métricas (Prometheus y Grafana)
+  prometheus:
+    image: prom/prometheus
+    container_name: prometheus
+    ports:
+      - "9091:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+    networks:
+      - backend
+
+  grafana:
+    image: grafana/grafana
+    container_name: grafana
+    ports:
+      - "3000:3000"
+    networks:
+      - backend
+
+networks:
+  backend:
+    driver: bridge
+
+volumes:
+  postgres-data:
+  mysql-data-estudiantes:
+  mysql-data-usuarios:
