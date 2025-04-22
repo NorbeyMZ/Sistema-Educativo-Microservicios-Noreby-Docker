@@ -12,9 +12,9 @@ jobs:
     strategy:
       matrix:
         microservice: [
-          'microservice-asignaturas',
-          'microservice-estudiantes',
-          'usuario-service'
+          'microservicio-asignaturas',
+          'microservicio-estudiantes',
+          'usuario-servicio'
         ]
     
     steps:
