@@ -2,6 +2,11 @@
 
 Este proyecto es un sistema educativo distribuido desarrollado con arquitectura de microservicios, usando **Spring Boot**, **Spring Cloud**, **Docker**, **Eureka**, y **Config Server**.
 
+
+
+![image](https://github.com/user-attachments/assets/fab53e7c-4b54-444b-92a9-64f9d9d72eac)
+
+
 ---
 
 ## Microservicios
